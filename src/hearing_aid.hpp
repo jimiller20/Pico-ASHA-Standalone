@@ -10,6 +10,13 @@
 #include "asha_bt.hpp"
 #include "asha_comms.hpp"
 
+// BLE supervision timeout in 10 ms units: how long the link may go without
+// a successful exchange before it is declared lost. Set from CMake via
+// -DASHA_SUPERVISION_TIMEOUT=<n>; 100 (1 s) matches the stock firmware.
+#ifndef ASHA_SUPERVISION_TIMEOUT
+#define ASHA_SUPERVISION_TIMEOUT 100
+#endif
+
 namespace asha
 {
 
@@ -151,6 +158,7 @@ struct HearingAid
     static void on_connected(bd_addr_t addr, hci_con_handle_t handle);
     static void on_disconnected(hci_con_handle_t handle, uint8_t status, uint8_t reason);
     static void on_data_len_set(hci_con_handle_t handle, uint16_t rx_octets, uint16_t rx_time, uint16_t tx_octets, uint16_t tx_time);
+    static void on_phy_update(hci_con_handle_t handle, uint8_t status, uint8_t tx_phy, uint8_t rx_phy);
     static void delete_pair();
     static void delete_pair(uint16_t conn_id);
     static void handle_sm(PACKET_HANDLER_PARAMS);

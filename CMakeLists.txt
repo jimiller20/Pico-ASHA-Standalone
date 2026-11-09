@@ -44,6 +44,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(ENABLE_AUDIO_ENC_STATS "Enable audio downsampling and encoding statistics" OFF)
 option(ENABLE_L2CAP_TX_TRACE "Emit per-SDU L2CAP transmit handshake diagnostics" OFF)
+set(ASHA_SUPERVISION_TIMEOUT "100" CACHE STRING "BLE supervision timeout in 10 ms units (100 = 1 s)")
 
 pico_sdk_init()
 
@@ -93,6 +94,7 @@ endif(ENABLE_L2CAP_TX_TRACE)
 list(APPEND pico_asha_defines "PICO_ASHA_FW_VERS_MAJOR=${CMAKE_PROJECT_VERSION_MAJOR}")
 list(APPEND pico_asha_defines "PICO_ASHA_FW_VERS_MINOR=${CMAKE_PROJECT_VERSION_MINOR}")
 list(APPEND pico_asha_defines "PICO_ASHA_FW_VERS_PATCH=${CMAKE_PROJECT_VERSION_PATCH}")
+list(APPEND pico_asha_defines "ASHA_SUPERVISION_TIMEOUT=${ASHA_SUPERVISION_TIMEOUT}")
 
 # list(APPEND pico_asha_defines "PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=1")
 # CDC is owned directly by the core-0 communication transport. Enabling USB

@@ -462,6 +462,29 @@ void HearingAid::on_data_len_set(hci_con_handle_t handle,
     //                     rx_octets, rx_time, tx_octets, tx_time);
 }
 
+static const char* phy_str(uint8_t phy)
+{
+    switch (phy) {
+        case 1:  return "1M";
+        case 2:  return "2M";
+        case 3:  return "Coded";
+        default: return "?";
+    }
+}
+
+// Informational: links start on LE 1M; this event fires only if either side
+// switches PHY (e.g. to the faster, shorter-range LE 2M).
+void HearingAid::on_phy_update(hci_con_handle_t handle, uint8_t status, uint8_t tx_phy, uint8_t rx_phy)
+{
+    HearingAid* ha = get_by_con_handle(handle);
+    uint16_t conn_id = ha ? ha->conn_id : comm::unset_conn_id;
+    if (status != ERROR_CODE_SUCCESS) {
+        comm::short_log(conn_id, "PHY update failed: 0x%02x", status);
+        return;
+    }
+    comm::short_log(conn_id, "PHY TX %s RX %s", phy_str(tx_phy), phy_str(rx_phy));
+}
+
 void HearingAid::delete_pair()
 {
     delete_paired_devices();
@@ -792,6 +815,8 @@ void HearingAid::handle_char_read(PACKET_HANDLER_PARAMS)
                 //LOG_INFO("%s: ROP characteristic read", ha->get_side_str());
                 ha->rop.read(val);
                 ha->side_str = ha->rop.side() == Side::Left ? "Left" : "Right";
+                comm::short_log(ha->conn_id, "Render delay: %u ms", (unsigned)ha->rop.render_delay());
+                comm::short_log(ha->conn_id, "Sup timeout: %u ms", (unsigned)(ASHA_SUPERVISION_TIMEOUT * 10));
             } else if (val_handle == ha->services.asha.psm.value_handle) {
                 ha->psm = val[0];
                 //LOG_INFO("%s: PSM characteristic read: %d", ha->get_side_str(), ha->psm);

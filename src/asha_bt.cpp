@@ -16,6 +16,13 @@ constexpr uint16_t asha_conn_interval = 20 / 1.25f;
 
 constexpr uint16_t asha_conn_latency  = 10;
 
+/* Supervision timeout, in units of 10ms. The spec requires it to exceed
+   (1 + latency) * interval * 2, and caps it at 32 s. */
+constexpr uint16_t asha_supervision_timeout = ASHA_SUPERVISION_TIMEOUT;
+static_assert(asha_supervision_timeout * 10.0f > (1 + asha_conn_latency) * asha_conn_interval * 1.25f * 2,
+              "Supervision timeout too short for the connection interval and latency");
+static_assert(asha_supervision_timeout <= 3200, "Supervision timeout must not exceed 32 s");
+
 static bool enable_send_intro_packet = false;
 static bool usb_serial_is_connected = false;
 
@@ -276,7 +283,7 @@ static void hci_event_handler(PACKET_HANDLER_PARAMS)
                 add_bonded_to_fal();
                 // Set connection parameters including connection interval
                 // by default. Values taken from Android
-                gap_set_connection_parameters(0x0030, 0x0030, asha_conn_interval, asha_conn_interval, asha_conn_latency, 100, 12, 12);
+                gap_set_connection_parameters(0x0030, 0x0030, asha_conn_interval, asha_conn_interval, asha_conn_latency, asha_supervision_timeout, 12, 12);
                 gap_local_bd_addr(local_addr);
                 //LOG_INFO("BTstack up and running on %s", bd_addr_to_str(local_addr));
                 if (!runtime_settings.get_full_set_paired()) {
@@ -317,6 +324,13 @@ static void hci_event_handler(PACKET_HANDLER_PARAMS)
                 uint16_t tx_octets = hci_subevent_le_data_length_change_get_max_tx_octets(packet);
                 uint16_t tx_time = hci_subevent_le_data_length_change_get_max_tx_time(packet);
                 HearingAid::on_data_len_set(handle, rx_octets, rx_time, tx_octets, tx_time);
+            } else if (hci_event_le_meta_get_subevent_code(packet) == HCI_SUBEVENT_LE_PHY_UPDATE_COMPLETE) {
+                // BTstack has no RX PHY getter; RX_PHY follows TX_PHY at byte 7
+                // (event code, length, subevent, status, handle[2], TX_PHY, RX_PHY).
+                HearingAid::on_phy_update(hci_subevent_le_phy_update_complete_get_connection_handle(packet),
+                                          hci_subevent_le_phy_update_complete_get_status(packet),
+                                          hci_subevent_le_phy_update_complete_get_tx_phy(packet),
+                                          packet[7]);
             }
             break;
         case HCI_EVENT_DISCONNECTION_COMPLETE:
